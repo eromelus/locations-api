@@ -15,17 +15,31 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const pg_1 = require("pg");
-const getLocations = (req, res) => {
-    pool.query("SELECT * FROM locations LIMIT 5", (error, results) => {
-        if (error) {
-            throw error;
+const filter_locations_1 = require("./filter-locations");
+const locations_1 = require("./locations");
+const geocode_address_1 = require("./geocode-address");
+const getLocations = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    // pool.query("SELECT * FROM locations", (error, results) => {
+    //   if (error) {
+    //     throw error;
+    //   }
+    let ref;
+    if (req.params.address) {
+        try {
+            ref = yield (0, geocode_address_1.geocodeAddress)(req.params.address);
         }
-        res.status(200).json(results.rows);
-    });
-};
+        catch (err) {
+            return res.status(500).json({ error: "Failed to geocode address" });
+        }
+    }
+    const locations = locations_1.jobsiteLocations;
+    const topFive = (0, filter_locations_1.findNearestLocations)(ref, locations, 5);
+    res.status(200).json(topFive);
+    // });
+});
 const app = (0, express_1.default)();
 dotenv_1.default.config(); //Reads .env file and makes it accessible via process.env
-app.get("/", getLocations);
+app.get("/location/:address", getLocations);
 app.listen(process.env.PORT, () => {
     console.log(`Server is running at ${process.env.PORT}`);
 });

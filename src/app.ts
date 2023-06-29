@@ -1,20 +1,36 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import { Pool } from "pg";
+import { findNearestLocations } from "./filter-locations";
+import { jobsiteLocations } from "./locations";
+import { geocodeAddress } from "./geocode-address";
 
-const getLocations = (req: Request, res: Response) => {
-  pool.query("SELECT * FROM locations LIMIT 5", (error, results) => {
-    if (error) {
-      throw error;
+const getLocations = async (req: Request, res: Response) => {
+  // pool.query("SELECT * FROM locations", (error, results) => {
+  //   if (error) {
+  //     throw error;
+  //   }
+
+  let ref: any;
+  if (req.params.address) {
+    try {
+      ref = await geocodeAddress(req.params.address);
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to geocode address" });
     }
-    res.status(200).json(results.rows);
-  });
+  }
+
+  const locations = jobsiteLocations;
+  const topFive = findNearestLocations(ref, locations, 5);
+
+  res.status(200).json(topFive);
+  // });
 };
 
 const app = express();
 dotenv.config(); //Reads .env file and makes it accessible via process.env
 
-app.get("/", getLocations);
+app.get("/location/:address", getLocations);
 
 app.listen(process.env.PORT, () => {
   console.log(`Server is running at ${process.env.PORT}`);
